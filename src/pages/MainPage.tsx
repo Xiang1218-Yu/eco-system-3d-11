@@ -6,6 +6,7 @@ import { EcosystemStats } from '@/components/UI/EcosystemStats';
 import { FoodWebPanel } from '@/components/UI/FoodWebPanel';
 import { SpeciesInfoCard } from '@/components/UI/SpeciesInfoCard';
 import { ControlButtons } from '@/components/UI/ControlButtons';
+import { EvolutionChart } from '@/components/UI/EvolutionChart';
 import { useEcosystemSimulation } from '@/hooks/useEcosystemSimulation';
 import { useEcosystemStore, AQUARIUM_BOUNDS } from '@/store/useEcosystemStore';
 
@@ -63,6 +64,7 @@ export function MainPage() {
       <ControlButtons />
       <SpeciesToolbar />
       <EcosystemStats />
+      <EvolutionChart />
       <FoodWebPanel />
       <SpeciesInfoCard />
 

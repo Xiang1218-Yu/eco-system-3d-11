@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useEcosystemStore } from '@/store/useEcosystemStore';
+import { useEcosystemStore, POPULATION_SAMPLE_INTERVAL } from '@/store/useEcosystemStore';
 import { simulateStep } from '@/utils/ecosystemSimulator';
 
 export function useEcosystemSimulation() {
@@ -11,6 +11,7 @@ export function useEcosystemSimulation() {
   const batchRemoveOrganisms = useEcosystemStore((s) => s.batchRemoveOrganisms);
   const addOrganism = useEcosystemStore((s) => s.addOrganism);
   const incrementTime = useEcosystemStore((s) => s.incrementTime);
+  const recordPopulationSample = useEcosystemStore((s) => s.recordPopulationSample);
   const isRunning = useEcosystemStore((s) => s.isRunning);
 
   useEffect(() => {
@@ -36,6 +37,11 @@ export function useEcosystemSimulation() {
         });
 
         incrementTime();
+
+        const simTime = useEcosystemStore.getState().simulationTime;
+        if (simTime % POPULATION_SAMPLE_INTERVAL === 0) {
+          recordPopulationSample();
+        }
       }
 
       frameRef.current = requestAnimationFrame(tick);
@@ -48,5 +54,5 @@ export function useEcosystemSimulation() {
         cancelAnimationFrame(frameRef.current);
       }
     };
-  }, [batchUpdateOrganisms, batchRemoveOrganisms, addOrganism, incrementTime]);
+  }, [batchUpdateOrganisms, batchRemoveOrganisms, addOrganism, incrementTime, recordPopulationSample]);
 }

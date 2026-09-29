@@ -43,6 +43,12 @@ export interface EcosystemStats {
   totalOrganisms: number;
 }
 
+export interface PopulationSample {
+  time: number;
+  species: Record<string, number>;
+  trophic: Record<TrophicLevel, number>;
+}
+
 export interface FoodChainRelation {
   predatorId: string;
   preyId: string;

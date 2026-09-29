@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 import * as THREE from 'three';
-import type { Organism, EcosystemStats, Species } from '@/types/ecosystem';
+import type { Organism, EcosystemStats, PopulationSample, Species, TrophicLevel } from '@/types/ecosystem';
 import { getSpeciesById, SPECIES } from '@/data/species';
+
+export const POPULATION_SAMPLE_INTERVAL = 25;
+export const POPULATION_HISTORY_LIMIT = 80;
 
 interface EcosystemStore {
   organisms: Organism[];
@@ -10,6 +13,7 @@ interface EcosystemStore {
   isRunning: boolean;
   simulationTime: number;
   showLabels: boolean;
+  populationHistory: PopulationSample[];
 
   addOrganism: (speciesId: string, position?: THREE.Vector3) => void;
   removeOrganism: (organismId: string) => void;
@@ -21,6 +25,7 @@ interface EcosystemStore {
   resetEcosystem: () => void;
   toggleLabels: () => void;
   getStats: () => EcosystemStats;
+  recordPopulationSample: () => void;
   batchUpdateOrganisms: (updates: { id: string; updates: Partial<Organism> }[]) => void;
   batchRemoveOrganisms: (ids: string[]) => void;
 }
@@ -81,6 +86,7 @@ export const useEcosystemStore = create<EcosystemStore>((set, get) => ({
   isRunning: true,
   simulationTime: 0,
   showLabels: true,
+  populationHistory: [],
 
   addOrganism: (speciesId, position) => {
     const state = get();
@@ -153,6 +159,7 @@ export const useEcosystemStore = create<EcosystemStore>((set, get) => ({
       selectedOrganismId: null,
       simulationTime: 0,
       isRunning: true,
+      populationHistory: [],
     });
   },
 
@@ -196,6 +203,40 @@ export const useEcosystemStore = create<EcosystemStore>((set, get) => ({
       populationBySpecies,
       totalOrganisms: total,
     };
+  },
+
+  recordPopulationSample: () => {
+    const state = get();
+    const lastSample = state.populationHistory[state.populationHistory.length - 1];
+    if (lastSample && lastSample.time === state.simulationTime) return;
+
+    const speciesCounts: Record<string, number> = {};
+    const trophicCounts: Record<TrophicLevel, number> = {
+      producer: 0,
+      herbivore: 0,
+      carnivore: 0,
+      decomposer: 0,
+    };
+
+    state.organisms.forEach((o) => {
+      speciesCounts[o.speciesId] = (speciesCounts[o.speciesId] || 0) + 1;
+      const sp = getSpeciesById(o.speciesId);
+      if (sp) trophicCounts[sp.trophicLevel]++;
+    });
+
+    const sample: PopulationSample = {
+      time: state.simulationTime,
+      species: speciesCounts,
+      trophic: trophicCounts,
+    };
+
+    set((prev) => {
+      const history = [...prev.populationHistory, sample];
+      if (history.length > POPULATION_HISTORY_LIMIT) {
+        history.splice(0, history.length - POPULATION_HISTORY_LIMIT);
+      }
+      return { populationHistory: history };
+    });
   },
 }));
 
