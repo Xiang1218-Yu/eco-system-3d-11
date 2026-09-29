@@ -1,11 +1,12 @@
 import { useEffect, useRef } from 'react';
-import { useEcosystemStore } from '@/store/useEcosystemStore';
+import { useEcosystemStore, HISTORY_SAMPLE_INTERVAL } from '@/store/useEcosystemStore';
 import { simulateStep } from '@/utils/ecosystemSimulator';
 
 export function useEcosystemSimulation() {
   const frameRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
   const isRunningRef = useRef<boolean>(true);
+  const lastSampleTimeRef = useRef<number>(-HISTORY_SAMPLE_INTERVAL);
 
   const batchUpdateOrganisms = useEcosystemStore((s) => s.batchUpdateOrganisms);
   const batchRemoveOrganisms = useEcosystemStore((s) => s.batchRemoveOrganisms);
@@ -36,6 +37,16 @@ export function useEcosystemSimulation() {
         });
 
         incrementTime();
+
+        const state = useEcosystemStore.getState();
+        // 重置后历史被清空，采样基线随当前时间重新对齐
+        if (state.populationHistory.length === 0) {
+          lastSampleTimeRef.current = state.simulationTime - HISTORY_SAMPLE_INTERVAL;
+        }
+        if (state.simulationTime - lastSampleTimeRef.current >= HISTORY_SAMPLE_INTERVAL) {
+          lastSampleTimeRef.current = state.simulationTime;
+          state.recordPopulationSample();
+        }
       }
 
       frameRef.current = requestAnimationFrame(tick);

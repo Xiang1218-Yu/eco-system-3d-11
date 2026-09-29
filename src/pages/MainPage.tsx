@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { Aquarium3D } from '@/components/Aquarium3D/Aquarium';
 import { SpeciesToolbar } from '@/components/UI/SpeciesToolbar';
 import { EcosystemStats } from '@/components/UI/EcosystemStats';
+import { EvolutionChart } from '@/components/UI/EvolutionChart';
 import { FoodWebPanel } from '@/components/UI/FoodWebPanel';
 import { SpeciesInfoCard } from '@/components/UI/SpeciesInfoCard';
 import { ControlButtons } from '@/components/UI/ControlButtons';
@@ -63,6 +64,7 @@ export function MainPage() {
       <ControlButtons />
       <SpeciesToolbar />
       <EcosystemStats />
+      <EvolutionChart />
       <FoodWebPanel />
       <SpeciesInfoCard />
 

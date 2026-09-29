@@ -1,7 +1,10 @@
 import { create } from 'zustand';
 import * as THREE from 'three';
-import type { Organism, EcosystemStats, Species } from '@/types/ecosystem';
+import type { Organism, EcosystemStats, PopulationSample, Species, TrophicLevel } from '@/types/ecosystem';
 import { getSpeciesById, SPECIES } from '@/data/species';
+
+export const HISTORY_SAMPLE_INTERVAL = 25;
+export const HISTORY_LIMIT = 120;
 
 interface EcosystemStore {
   organisms: Organism[];
@@ -10,6 +13,7 @@ interface EcosystemStore {
   isRunning: boolean;
   simulationTime: number;
   showLabels: boolean;
+  populationHistory: PopulationSample[];
 
   addOrganism: (speciesId: string, position?: THREE.Vector3) => void;
   removeOrganism: (organismId: string) => void;
@@ -23,6 +27,7 @@ interface EcosystemStore {
   getStats: () => EcosystemStats;
   batchUpdateOrganisms: (updates: { id: string; updates: Partial<Organism> }[]) => void;
   batchRemoveOrganisms: (ids: string[]) => void;
+  recordPopulationSample: () => void;
 }
 
 const AQUARIUM_BOUNDS = {
@@ -81,6 +86,7 @@ export const useEcosystemStore = create<EcosystemStore>((set, get) => ({
   isRunning: true,
   simulationTime: 0,
   showLabels: true,
+  populationHistory: [],
 
   addOrganism: (speciesId, position) => {
     const state = get();
@@ -153,11 +159,60 @@ export const useEcosystemStore = create<EcosystemStore>((set, get) => ({
       selectedOrganismId: null,
       simulationTime: 0,
       isRunning: true,
+      populationHistory: [],
     });
   },
 
   toggleLabels: () => {
     set((prev) => ({ showLabels: !prev.showLabels }));
+  },
+
+  recordPopulationSample: () => {
+    const state = get();
+
+    // 空缸且没有历史时不产生采样点；已有历史时空缸仍记录零点，
+    // 这样种群灭绝时曲线会真正落到 0 而不是直接消失。
+    if (state.organisms.length === 0 && state.populationHistory.length === 0) return;
+
+    const speciesCounts: Record<string, number> = {};
+    SPECIES.forEach((s) => {
+      speciesCounts[s.id] = 0;
+    });
+
+    const trophicCounts = {
+      producer: 0,
+      herbivore: 0,
+      carnivore: 0,
+      decomposer: 0,
+    } as Record<TrophicLevel, number>;
+
+    state.organisms.forEach((o) => {
+      speciesCounts[o.speciesId] = (speciesCounts[o.speciesId] || 0) + 1;
+      const sp = getSpeciesById(o.speciesId);
+      if (sp) trophicCounts[sp.trophicLevel]++;
+    });
+
+    const sample: PopulationSample = {
+      time: state.simulationTime,
+      species: speciesCounts,
+      trophic: trophicCounts,
+      total: state.organisms.length,
+    };
+
+    set((prev) => {
+      // 已全部灭绝且上一个采样点也是全零，则不再追加，避免平坦的零尾部
+      // 把真正的衰退过程挤出限容历史；首个零点仍会保留以呈现灭绝。
+      const lastSample = prev.populationHistory[prev.populationHistory.length - 1];
+      if (state.organisms.length === 0 && lastSample && lastSample.total === 0) {
+        return prev;
+      }
+
+      const history =
+        prev.populationHistory.length >= HISTORY_LIMIT
+          ? [...prev.populationHistory.slice(prev.populationHistory.length - HISTORY_LIMIT + 1), sample]
+          : [...prev.populationHistory, sample];
+      return { populationHistory: history };
+    });
   },
 
   getStats: () => {

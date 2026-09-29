@@ -47,3 +47,10 @@ export interface FoodChainRelation {
   predatorId: string;
   preyId: string;
 }
+
+export interface PopulationSample {
+  time: number;
+  species: Record<string, number>;
+  trophic: Record<TrophicLevel, number>;
+  total: number;
+}
